@@ -153,7 +153,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CELERY_RESULT_BACKEND = 'django-db'
 # CELERY_RESULT_SERIALIZER = 'json'
 # CELERY_TASK_SERIALIZER = 'json'
-# CELERY_TIMEZONE = 'Asia/Kolkata'
+# settings.py
+
+# Celery configurations
+CELERY_BROKER_URL = 'memory://'
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+
 
 # JWT Secret Key
 JWT_SECRET="pixel"

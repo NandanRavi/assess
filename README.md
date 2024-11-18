@@ -17,3 +17,16 @@
 'celery -A assessmentProject worker --loglevel=info'
 
 ### Implementation is done for both redis and localhost please check settings.py for both 
+
+
+## Images
+"These are the Postman's API"
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-2.png)
+
+"WebSocket working"
+![alt text](image-3.png)
+
+"Celery Connection"
+![alt text](image-4.png)

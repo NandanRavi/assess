@@ -1,50 +1,89 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.contrib.auth.models import AnonymousUser
 import json
+from .models import Message
 from users.models import CustomUser
+from users.utils import decode_jwt
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        try:
-            self.room_name = self.scope['url_route']['kwargs']['room_name']
-            if self.room_name:
-                self.room_group_name = f'chat_{self.room_name}'
-            else:
-                self.room_group_name = 'chat_default'
+        token = self.scope['query_string'].decode().split('=')[-1]
+        self.scope['user'] = await self.authenticate_user(token)
 
-            await self.channel_layer.group_add(
-                self.room_group_name,
-                self.channel_name
-            )
-            await self.accept()
-        except KeyError as e:
+        if self.scope['user'] is None or self.scope['user'].is_anonymous:
             await self.close()
-            print(f"KeyError in connect: {e}")
+            return
 
+        if 'receiver_email' in self.scope['url_route']['kwargs']:
+            self.role = 'sender'
+            self.counterpart_email = self.scope['url_route']['kwargs']['receiver_email']
+        elif 'sender_email' in self.scope['url_route']['kwargs']:
+            self.role = 'receiver'
+            self.counterpart_email = self.scope['url_route']['kwargs']['sender_email']
+        else:
+            self.role = None
+            self.counterpart_email = None
+
+        self.counterpart_user = await self.get_user(self.counterpart_email)
+
+        if self.counterpart_user:
+            await self.accept()
+        else:
+            await self.close()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        if not self.scope['user'].is_anonymous:
+            print(f"Disconnected: {self.scope['user'].email}")
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        message = data['message']
-        sender = self.scope['user'].email
+        try:
+            data = json.loads(text_data)
+            message = data.get('message')
 
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
+            if self.role == 'sender':
+                await self.save_message(self.scope['user'], self.counterpart_user, message)
+            elif self.role == 'receiver':
+                await self.save_message(self.counterpart_user, self.scope['user'], message)
+
+            await self.send(text_data=json.dumps({
                 'message': message,
-                'sender': sender,
-            }
+                'sender': self.scope['user'].email,
+            }))
+        except Exception as e:
+            print(f"Error in receive: {e}")
+
+    @staticmethod
+    @database_sync_to_async
+    def get_user(email):
+        try:
+            return CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return None
+
+    @staticmethod
+    @database_sync_to_async
+    def save_message(sender, receiver, content):
+        return Message.objects.create(
+            sender=sender,
+            receiver=receiver,
+            content=content,
         )
 
-    async def chat_message(self, event):
-        message = event['message']
-        sender = event['sender']
-        await self.send(text_data=json.dumps({
-            'message': message,
-            'sender': sender,
-        }))
+    async def authenticate_user(self, token):
+        try:
+            payload = decode_jwt(token)
+            user = await self.get_user_by_id(payload['user_id'])
+            return user
+        except Exception as e:
+            print(f"Authentication failed: {e}")
+            return AnonymousUser()
+
+    @staticmethod
+    @database_sync_to_async
+    def get_user_by_id(user_id):
+        """Fetch user by ID synchronously."""
+        try:
+            return CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return None

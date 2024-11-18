@@ -51,7 +51,7 @@ class LoginUser(APIView):
         if user is not None:
             token = encode_jwt(user)
             login(request, user)
-            return Response({'message': 'Logged in successfully', "token":token}, status=status.HTTP_200_OK)
+            return Response({'message': 'Logged in successfully', "user":f"{user}", "token":token}, status=status.HTTP_200_OK)
         return Response({'message': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
 
 

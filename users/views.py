@@ -31,6 +31,7 @@ class RegisterUser(APIView):
                 if CustomUser.objects.filter(email=serializer.validated_data['email']).exists():
                     return Response({"error": "Email already registered"}, status=status.HTTP_400_BAD_REQUEST)
                 user = serializer.save()
+                send_mail_func.apply_async(args=[user.email])
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

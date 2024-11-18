@@ -167,7 +167,7 @@ CELERY_TIMEZONE = 'Asia/Kolkata'
 JWT_SECRET="pixel"
 JWT_ALGORITHM = 'HS256'
 
-EMAIL_BACKEND = 'django.assessmentProject.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
